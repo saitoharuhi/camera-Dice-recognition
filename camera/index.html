@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webカメラ さいころ認識システム</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --bg-gradient: linear-gradient(135deg, #0b0c10 0%, #1f2833 100%);
+            --card-bg: rgba(22, 27, 34, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-primary: #6366f1; /* Indigo */
+            --accent-cyan: #06b6d4; /* Cyan */
+            --accent-green: #10b981; /* Emerald */
+            --accent-red: #ef4444; /* Red */
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 1.8fr 1.2fr;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        @media (max-width: 968px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(16px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: #000;
+            aspect-ratio: 4/3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .stat-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-value.large {
+            font-size: 3.5rem;
+            line-height: 1;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+        }
+
+        .status-banner {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .status-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .status-text {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--accent-cyan);
+            transition: color 0.3s ease;
+        }
+
+        .status-text.stable {
+            color: var(--accent-green);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .history-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .history-list {
+            display: flex;
+            gap: 0.5rem;
+            min-height: 40px;
+            align-items: center;
+        }
+
+        .history-item {
+            font-family: var(--font-mono);
+            background: var(--accent-primary);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .control-value {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            transition: background 0.3s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+            transition: transform 0.1s ease, background 0.3s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #fff;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 0.5rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-cyan);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Webカメラ さいころ認識システム</h1>
+        <p>リアルタイムでWebカメラの映像からさいころの出目を高精度に解析・表示します</p>
+    </header>
+    
+    <main>
+        <!-- Left Column: Video Feed & Connection -->
+        <section class="card">
+            <div class="video-container">
+                <img id="video-element" class="video-feed" src="/video_feed" alt="カメラの映像ストリーム" />
+            </div>
+            
+            <div class="connection-status">
+                <div id="connection-dot" class="status-dot"></div>
+                <span id="connection-text">接続中...</span>
+            </div>
+        </section>
+        
+        <!-- Right Column: Status & Controls -->
+        <section class="card">
+            <!-- Real-time Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-title">現在の目の数</span>
+                    <span id="dice-count" class="stat-value large">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">動作速度</span>
+                    <div style="display: flex; align-items: baseline; gap: 2px;">
+                        <span id="fps" class="stat-value">0</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono);">FPS</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analysis Banner -->
+            <div class="status-banner">
+                <span class="status-title">出目判定状況</span>
+                <span id="status-text" class="status-text">さいころを写してください</span>
+            </div>
+            
+            <!-- History -->
+            <div class="history-container">
+                <span class="history-title">出目履歴 (直近5回)</span>
+                <div id="history-list" class="history-list">
+                    <span style="font-size: 0.9rem; color: var(--text-muted);">まだ履歴がありません</span>
+                </div>
+            </div>
+            
+            <!-- Config Controls -->
+            <div class="control-group">
+                <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">パラメータ調整</h3>
+                
+                <div class="control-item">
+                    <div class="control-header">
+                        <span class="control-label">2値化しきい値 (Threshold)</span>
+                        <span id="threshold-val" class="control-value">100</span>
+                    </div>
+                    <input type="range" id="threshold" min="0" max="255" value="100">
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-header">
+                        <span class="control-label">最小面積 (Min Size)</span>
+                        <span id="min-size-val" class="control-value">15</span>
+                    </div>
+                    <input type="range" id="min-size" min="1" max="100" value="15">
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-header">
+                        <span class="control-label">最大面積 (Max Size)</span>
+                        <span id="max-size-val" class="control-value">400</span>
+                    </div>
+                    <input type="range" id="max-size" min="50" max="1000" value="400">
+                </div>
+                
+                <div class="toggle-container">
+                    <span class="control-label">白黒反転 (Invert)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="invert">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let ws;
+        const wsUrl = `ws://${window.location.host}/ws`;
+
+        const thresholdInput = document.getElementById('threshold');
+        const thresholdVal = document.getElementById('threshold-val');
+        const minSizeInput = document.getElementById('min-size');
+        const minSizeVal = document.getElementById('min-size-val');
+        const maxSizeInput = document.getElementById('max-size');
+        const maxSizeVal = document.getElementById('max-size-val');
+        const invertInput = document.getElementById('invert');
+        
+        const diceCountEl = document.getElementById('dice-count');
+        const fpsEl = document.getElementById('fps');
+        const statusTextEl = document.getElementById('status-text');
+        const historyListEl = document.getElementById('history-list');
+        const connectionDot = document.getElementById('connection-dot');
+        const connectionText = document.getElementById('connection-text');
+        const videoElement = document.getElementById('video-element');
+
+        function connect() {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                connectionDot.classList.add('connected');
+                connectionText.textContent = '接続済み (WebSocket)';
+                // Force reload video element source to refresh feed connection
+                videoElement.src = "/video_feed?t=" + new Date().getTime();
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                // Update stats
+                diceCountEl.textContent = data.pip_count;
+                fpsEl.textContent = data.fps;
+                statusTextEl.textContent = data.status_text;
+                if (data.status_text.includes('【確定】')) {
+                    statusTextEl.classList.add('stable');
+                } else {
+                    statusTextEl.classList.remove('stable');
+                }
+
+                // Update history
+                updateHistory(data.roll_history);
+
+                // Sync controls if changed from server side (primarily on initial load)
+                if (data.config) {
+                    if (document.activeElement !== thresholdInput) {
+                        thresholdInput.value = data.config.threshold;
+                        thresholdVal.textContent = data.config.threshold;
+                    }
+                    if (document.activeElement !== minSizeInput) {
+                        minSizeInput.value = data.config.min_size;
+                        minSizeVal.textContent = data.config.min_size;
+                    }
+                    if (document.activeElement !== maxSizeInput) {
+                        maxSizeInput.value = data.config.max_size;
+                        maxSizeVal.textContent = data.config.max_size;
+                    }
+                    if (document.activeElement !== invertInput) {
+                        invertInput.checked = data.config.invert;
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                connectionDot.classList.remove('connected');
+                connectionText.textContent = '接続が切断されました。再接続中...';
+                setTimeout(connect, 2000);
+            };
+        }
+
+        function sendSettings() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    threshold: parseInt(thresholdInput.value),
+                    min_size: parseInt(minSizeInput.value),
+                    max_size: parseInt(maxSizeInput.value),
+                    invert: invertInput.checked
+                }));
+            }
+        }
+
+        thresholdInput.addEventListener('input', (e) => {
+            thresholdVal.textContent = e.target.value;
+            sendSettings();
+        });
+        minSizeInput.addEventListener('input', (e) => {
+            minSizeVal.textContent = e.target.value;
+            sendSettings();
+        });
+        maxSizeInput.addEventListener('input', (e) => {
+            maxSizeVal.textContent = e.target.value;
+            sendSettings();
+        });
+        invertInput.addEventListener('change', () => {
+            sendSettings();
+        });
+
+        let currentHistoryStr = '';
+        function updateHistory(history) {
+            if (!history || history.length === 0) {
+                historyListEl.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-muted);">まだ履歴がありません</span>';
+                currentHistoryStr = '';
+                return;
+            }
+            
+            const historyStr = history.join(',');
+            if (historyStr === currentHistoryStr) return;
+            currentHistoryStr = historyStr;
+
+            historyListEl.innerHTML = '';
+            history.forEach(val => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.textContent = val;
+                historyListEl.appendChild(item);
+            });
+        }
+
+        connect();
+    </script>
+</body>
+</html>
